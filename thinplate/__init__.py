@@ -1,4 +1,4 @@
-from thinplate.numpy import *
+from thinplate.hybrid import *
 
 try:
     import torch

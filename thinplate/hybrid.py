@@ -4,6 +4,7 @@
 # ============================================================
 
 import numpy as np
+import torch
 
 class TPS:       
     @staticmethod
@@ -31,34 +32,34 @@ class TPS:
     def d(a, b):
         D = a[:, None, :2] - b[None, :, :2]
         np.square(D, out=D)
-        D = D.sum(-1)
-        np.sqrt(D, out=D)
-        return D
-        # return np.sqrt(np.square(a[:, None, :2] - b[None, :, :2]).sum(-1))
+        return D.sum(-1)
 
     @staticmethod
     def u(r):
-        return r**2 * np.log(r + 1e-6)
+        return r * np.log(np.sqrt(r) + 1e-6)
     
     @staticmethod
     def ud(a, b):
-        D = a[:, None, :2] - b[None, :, :2]
-        D = np.square(D, out=D)
+        D = (a[:, None, :2] - b[None, :, :2])
+        D = torch.square_(D)
         D = D.sum(-1)
-        D = np.multiply(D, np.log(np.sqrt(D) + 1e-6), out=D)
-        return D
+        E = torch.log_(torch.sqrt(D) + 1e-6)        # do not inplace sqrt here, D required later.
+        return D.mul_(E)
 
     @staticmethod
+    @torch.inference_mode()
     def z(x, c, theta):
-        x = np.atleast_2d(x)
+        x, c, theta = [torch.from_numpy(i) for i in (x,c,theta)]
+        x = torch.atleast_2d(x)
         U = TPS.ud(x, c)
         w, a = theta[:-3], theta[-3:]
         reduced = theta.shape[0] == c.shape[0] + 2
         if reduced:
-            w = np.concatenate((-np.sum(w, keepdims=True), w))
-        b = np.dot(U, w)
-        return a[0] + a[1]*x[:, 0] + a[2]*x[:, 1] + b
-
+            w = torch.concatenate((-torch.sum(w, keepdims=True), w))
+        b = torch.mm(U, w.unsqueeze(-1)).squeeze()
+        res = a[0] + a[1]*x[:, 0] + a[2]*x[:, 1] + b
+        return res.numpy()
+    
 def uniform_grid(shape):
     '''Uniform grid coordinates.
     
