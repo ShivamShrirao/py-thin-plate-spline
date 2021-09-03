@@ -5,6 +5,7 @@
 
 import numpy as np
 import torch
+from torch._C import device
 
 class TPS:       
     @staticmethod
@@ -48,8 +49,8 @@ class TPS:
 
     @staticmethod
     @torch.inference_mode()
-    def z(x, c, theta):
-        x, c, theta = [torch.from_numpy(i) for i in (x,c,theta)]
+    def z(x, c, theta, device='cpu'):
+        x, c, theta = [torch.from_numpy(i).to(device) for i in (x,c,theta)]
         x = torch.atleast_2d(x)
         U = TPS.ud(x, c)
         w, a = theta[:-3], theta[-3:]
@@ -58,8 +59,9 @@ class TPS:
             w = torch.concatenate((-torch.sum(w, keepdims=True), w))
         b = torch.mm(U, w.unsqueeze(-1)).squeeze()
         res = a[0] + a[1]*x[:, 0] + a[2]*x[:, 1] + b
-        return res.numpy()
-    
+        return res.cpu().numpy()
+
+
 def uniform_grid(shape):
     '''Uniform grid coordinates.
     
@@ -93,13 +95,13 @@ def tps_theta_from_points(c_src, c_dst, reduced=False):
     return np.stack((theta_dx, theta_dy), -1)
 
 
-def tps_grid(theta, c_dst, dshape):    
+def tps_grid(theta, c_dst, dshape, device='cpu'):
     ugrid = uniform_grid(dshape)
 
     reduced = c_dst.shape[0] + 2 == theta.shape[0]
 
-    dx = TPS.z(ugrid.reshape((-1, 2)), c_dst, theta[:, 0]).reshape(dshape[:2])
-    dy = TPS.z(ugrid.reshape((-1, 2)), c_dst, theta[:, 1]).reshape(dshape[:2])
+    dx = TPS.z(ugrid.reshape((-1, 2)), c_dst, theta[:, 0], device).reshape(dshape[:2])
+    dy = TPS.z(ugrid.reshape((-1, 2)), c_dst, theta[:, 1], device).reshape(dshape[:2])
     dgrid = np.stack((dx, dy), -1)
 
     grid = dgrid + ugrid
