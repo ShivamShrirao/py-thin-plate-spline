@@ -14,7 +14,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='thinplate',
-    version=open('thinplate/__init__.py').readlines()[-1].split()[-1].strip('\''),
+    version='1.0.1',
     description='Thin plate splines for numpy and pytorch',    
     author='Christoph Heindl',
     url='https://github.com/cheind/py-thin-plate-spline',
